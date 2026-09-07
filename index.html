@@ -14,6 +14,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%;background:radial-gradient(circle at top,#12358c 0,#071747 38%,#020718 100%);color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+html.modal-open,body.modal-open{overflow:hidden;height:100%;overscroll-behavior:none}
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 button,input,select{font:inherit}
 button{touch-action:manipulation}
@@ -52,8 +53,8 @@ input[type=text],input[type=number],select{width:100%;background:#fff;color:#101
 .clue-btn.used{background:#04123e;color:transparent;border-color:#0b1b53;box-shadow:none}
 .board-tip{text-align:center;color:var(--muted);font-size:12px;margin:4px 0 0}
 .round-complete{max-width:760px;margin:12px auto;padding:15px;border:1px solid var(--line);background:rgba(0,0,0,.25);border-radius:16px;text-align:center}
-.modal{position:fixed;inset:0;z-index:100;background:rgba(0,4,20,.96);display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.modal-inner{width:100%;max-width:1000px;min-height:100%;display:flex;flex-direction:column;padding:16px}
+.modal{position:fixed;inset:0;z-index:100;background:rgba(0,4,20,.96);display:flex;align-items:stretch;justify-content:center;overflow:hidden;overscroll-behavior:contain;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.modal-inner{width:100%;max-width:1000px;height:100%;height:100dvh;min-height:0;display:flex;flex-direction:column;padding:16px;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .clue-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .clue-category{font-size:15px;text-transform:uppercase;font-weight:900;color:var(--gold)}
 .value-pill{background:var(--gold);color:#251700;padding:7px 12px;border-radius:999px;font-weight:950}
@@ -65,7 +66,7 @@ input[type=text],input[type=number],select{width:100%;background:#fff;color:#101
 .dd-wager-entry label{display:grid;gap:5px}
 .dd-wager-entry input{font-size:22px;font-weight:900}
 @keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
-.clue-text{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(26px,6vw,62px);font-weight:850;line-height:1.08;padding:18px 6px}
+.clue-text{flex:0 0 auto;min-height:clamp(150px,38dvh,380px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(26px,6vw,62px);font-weight:850;line-height:1.08;padding:18px 6px}
 .answer-box{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;margin-bottom:10px}
 .answer{font-size:clamp(20px,4vw,34px);font-weight:900;color:var(--good)}
 .answer.covered{filter:blur(12px);user-select:none}
@@ -106,7 +107,7 @@ input[type=text],input[type=number],select{width:100%;background:#fff;color:#101
   .topbar{position:relative}.scorebar{padding-top:3px}
   .score-card{min-width:112px;padding:5px 8px}.score-card .score{font-size:18px}
   .category{min-height:58px}.board{min-width:720px;gap:4px}
-  .modal-inner{padding:8px 12px}.clue-text{font-size:clamp(24px,5vw,44px);padding:5px}
+  .modal-inner{padding:8px 12px 18px}.clue-text{font-size:clamp(22px,5vw,40px);padding:8px 4px;min-height:110px}
   .answer-box{padding:7px}.responders{padding-bottom:5px}
 }
 </style>
@@ -277,6 +278,18 @@ function loadSaved(){
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"); } catch(e){ return null; }
 }
 function clearSaved(){ localStorage.removeItem(STORAGE_KEY); }
+function setModalOpen(open){
+  document.documentElement.classList.toggle("modal-open",open);
+  document.body.classList.toggle("modal-open",open);
+  if(open){
+    const inner=document.querySelector("#clueModal .modal-inner");
+    if(inner) inner.scrollTop=0;
+  }
+}
+function scoringValue(cur){
+  if(!cur)return 0;
+  return cur.isDD ? Math.floor(Number(cur.wager)||0) : Math.floor(Number(cur.value)||0);
+}
 
 let setupCount=4;
 function renderPlayerInputs(){
@@ -295,6 +308,7 @@ function showSetup(){
   $("game").classList.add("hidden");
   $("finalScreen").classList.add("hidden");
   $("clueModal").classList.add("hidden");
+  setModalOpen(false);
   $("resumeGame").classList.toggle("hidden",!loadSaved());
 }
 function newGame(){
@@ -332,6 +346,7 @@ function rerollRound(){
   prepareRound(); renderBoard();
 }
 function showGame(){
+  setModalOpen(false);
   $("setup").classList.add("hidden");
   $("finalScreen").classList.add("hidden");
   $("game").classList.remove("hidden");
@@ -381,7 +396,7 @@ function openClue(c,q){
   stopTimer();
   const cat=state.roundCategories[c], item=QUESTION_BANK[cat][q], base=100*(q+1)*ROUND_MULT[state.round-1];
   const isDD=state.dailyDouble.cat===c && state.dailyDouble.q===q;
-  state.current={c,q,cat,clue:item.clue,response:item.response,value:base,baseValue:base,isDD,attempted:[],active:null,ddPlayer:null,ddLocked:false,wager:null};
+  state.current={c,q,cat,clue:item.clue,response:item.response,value:base,baseValue:base,isDD,attempted:[],active:null,ddPlayer:null,ddLocked:false,wager:null,resolved:false};
   $("clueCategory").textContent=cat;
   $("clueSub").textContent=`Runda ${state.round} • ordinarie värde ${base.toLocaleString("sv-SE")} poäng`;
   $("clueValue").textContent=isDD?"Valfri satsning":`${base.toLocaleString("sv-SE")} poäng`;
@@ -391,6 +406,7 @@ function openClue(c,q){
   $("answerText").classList.add("covered");
   $("toggleAnswer").textContent="Visa facit";
   $("clueModal").classList.remove("hidden");
+  setModalOpen(true);
   if(isDD){
     setCluePlayVisible(false);
     $("ddWagerPanel").classList.remove("hidden");
@@ -453,38 +469,61 @@ function updateJudgeButtons(){
   $("correctBtn").disabled=!ok; $("wrongBtn").disabled=!ok;
 }
 function markCorrect(){
-  const i=state.current.active;if(i===null)return;
-  state.players[i].score+=state.current.value;
-  toast(`${state.players[i].name}: +${state.current.value.toLocaleString("sv-SE")} poäng`);
+  const cur=state.current;
+  if(!cur || cur.resolved || cur.active===null)return;
+  const i=cur.active, points=scoringValue(cur);
+  cur.resolved=true;
+  stopTimer();
+  state.players[i].score+=points;
+  toast(`${state.players[i].name}: +${points.toLocaleString("sv-SE")} poäng`);
   finishClue();
 }
 function markWrong(){
-  const i=state.current.active;if(i===null)return;
-  state.players[i].score-=state.current.value;
-  toast(`${state.players[i].name}: −${state.current.value.toLocaleString("sv-SE")} poäng`);
-  if(state.current.isDD){
+  const cur=state.current;
+  if(!cur || cur.resolved || cur.active===null)return;
+  const i=cur.active, points=scoringValue(cur);
+  if(cur.isDD){
+    cur.resolved=true;
+    stopTimer();
+    state.players[i].score-=points;
+    toast(`${state.players[i].name}: −${points.toLocaleString("sv-SE")} poäng`);
     finishClue();
     return;
   }
-  state.current.attempted.push(i);
-  state.current.active=null;
+  state.players[i].score-=points;
+  toast(`${state.players[i].name}: −${points.toLocaleString("sv-SE")} poäng`);
+  cur.attempted.push(i);
+  cur.active=null;
   renderScores();renderResponders();save();
-  if(state.current.attempted.length===state.players.length) finishClue();
+  if(cur.attempted.length===state.players.length){
+    cur.resolved=true;
+    finishClue();
+  }
 }
 function handleNoAnswer(){
-  if(state.current && state.current.isDD && state.current.ddLocked && state.current.ddPlayer!==null){
-    const i=state.current.ddPlayer;
-    state.players[i].score-=state.current.value;
-    toast(`${state.players[i].name}: −${state.current.value.toLocaleString("sv-SE")} poäng`);
+  const cur=state.current;
+  if(!cur || cur.resolved)return;
+  cur.resolved=true;
+  stopTimer();
+  if(cur.isDD && cur.ddLocked && cur.ddPlayer!==null){
+    const i=cur.ddPlayer, points=scoringValue(cur);
+    state.players[i].score-=points;
+    toast(`${state.players[i].name}: −${points.toLocaleString("sv-SE")} poäng`);
   }
   finishClue();
 }
 function finishClue(){
   stopTimer();
+  if(!state.current){
+    $("clueModal").classList.add("hidden");
+    setModalOpen(false);
+    return;
+  }
   const key=`${state.current.c}-${state.current.q}`;
   state.usedCells[key]=true;
   state.current=null;
   $("clueModal").classList.add("hidden");
+  setModalOpen(false);
   save();renderBoard();
 }
 function startTimer(sec,isFinal){
@@ -498,12 +537,17 @@ function updateTimer(){
 }
 function onTimeout(){
   stopTimer();
-  if(state.current && state.current.active!==null){
-    const i=state.current.active;
-    state.players[i].score-=state.current.value;
-    toast(`Tiden ute: ${state.players[i].name} −${state.current.value.toLocaleString("sv-SE")} poäng`);
-  } else toast("Tiden är ute.");
-  setTimeout(()=>{if(state.current)finishClue()},500);
+  const cur=state.current;
+  if(!cur || cur.resolved)return;
+  cur.resolved=true;
+  if(cur.active!==null){
+    const i=cur.active, points=scoringValue(cur);
+    state.players[i].score-=points;
+    toast(`Tiden ute: ${state.players[i].name} −${points.toLocaleString("sv-SE")} poäng`);
+  } else {
+    toast("Tiden är ute.");
+  }
+  setTimeout(()=>{if(state.current===cur)finishClue()},350);
 }
 function stopTimer(){if(timerHandle){clearInterval(timerHandle);timerHandle=null}}
 function stopTimers(){stopTimer();if(finalTimerHandle){clearInterval(finalTimerHandle);finalTimerHandle=null}}
@@ -623,6 +667,7 @@ $("finishFinal").onclick=finishFinal;
 $("newAfterFinal").onclick=()=>{clearSaved();state=null;showSetup()};
 
 document.addEventListener("visibilitychange",()=>{ if(document.hidden){timerPaused=true;finalPaused=true} });
+setModalOpen(false);
 renderPlayerInputs();
 showSetup();
 </script>
