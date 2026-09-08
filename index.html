@@ -74,8 +74,9 @@ input[type=text],input[type=number],select{width:100%;background:#fff;color:#101
 .timer{font-size:28px;font-weight:950;min-width:68px;text-align:center}
 .timer-track{height:14px;background:#18234a;border-radius:999px;overflow:hidden;flex:1}
 .timer-fill{height:100%;background:var(--gold);width:100%;transition:width .25s linear}
-.responders{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
-.responder{white-space:nowrap;background:#0b236d;color:white;border:2px solid transparent;border-radius:12px;padding:11px 13px;font-weight:800}
+.responders{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;flex:0 0 auto;min-height:50px}
+.responder{white-space:nowrap;background:#0b236d;color:white;border:2px solid transparent;border-radius:12px;padding:11px 13px;font-weight:800;flex:0 0 auto}
+.clue-head,.answer-box,.timer-area,#responderLabel,.judge,.bottom-actions{flex-shrink:0}
 .responder.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,204,51,.25)}
 .responder.tried{opacity:.38}
 .judge{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -108,7 +109,12 @@ input[type=text],input[type=number],select{width:100%;background:#fff;color:#101
   .score-card{min-width:112px;padding:5px 8px}.score-card .score{font-size:18px}
   .category{min-height:58px}.board{min-width:720px;gap:4px}
   .modal-inner{padding:8px 12px 18px}.clue-text{font-size:clamp(22px,5vw,40px);padding:8px 4px;min-height:110px}
-  .answer-box{padding:7px}.responders{padding-bottom:5px}
+  .answer-box{padding:7px}
+  #responders{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:6px;overflow:visible;padding:4px 0 8px;min-height:0;flex:none}
+  #responders .responder{width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:8px 9px;min-height:40px}
+  #responderLabel{margin-top:2px;flex:none}
+  #clueJudge{position:relative;z-index:1;flex:none;margin-top:2px}
+  #clueJudge .btn{min-height:42px;padding:9px 12px}
 }
 </style>
 </head>
